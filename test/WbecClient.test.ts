@@ -1,7 +1,6 @@
-
-import { WbecClient } from '../src/wbec-client';
 import axios from 'axios';
-import { PvMode, WbecJsonResponse, WbecPvResponse, WbecConfigResponse, WbecStatusResponse, WbecChargeLogResponse } from '../src/types';
+import WbecClient from '../src/WbecClient';
+import { PvMode, WbecJsonResponse, WbecPvResponse, WbecConfigResponse } from '../src/types';
 
 jest.mock('axios');
 const mockedAxios = jest.mocked(axios);

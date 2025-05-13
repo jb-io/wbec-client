@@ -1,1 +1,2 @@
-export * from './wbec-client';
+export * from './types';
+export * from './WbecClient';

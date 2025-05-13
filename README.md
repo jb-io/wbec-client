@@ -88,6 +88,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+Refactor:
+* Export typescript types from index
+* Extract RateLimitedTaskQueue as separate class
+
 ### 0.0.1 (2025-05-08)
 Features:
 * Initial Release of library

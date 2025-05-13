@@ -9,6 +9,7 @@ import {
     WbecChargeLogResponse,
 } from "./types";
 import {default as axios, AxiosRequestConfig} from 'axios';
+import RateLimitedTaskQueue from './RateLimitedTaskQueue';
 
 
 const DEFAULT_OPTIONS: Required<WbecDeviceOptions> = {
@@ -16,70 +17,31 @@ const DEFAULT_OPTIONS: Required<WbecDeviceOptions> = {
     maxRequestInterval: 1000,
 };
 
-export class WbecClient {
+export default class WbecClient {
 
     private readonly _host: string;
     private readonly _timeout: number;
-    private readonly _maxRequestInterval: number;
 
-    private _lastRequestTime: number = 0;
-    private _requestQueue: Array<{
-        resolve: (value: any) => void;
-        reject: (error: any) => void;
-        execute: () => Promise<any>;
-    }> = [];
-    private _isProcessingQueue: boolean = false;
+    private readonly _requestQueue: RateLimitedTaskQueue;
 
     constructor(host: string, options: WbecDeviceOptions) {
         this._host = host;
 
         const fullOptions: Required<WbecDeviceOptions> = {...DEFAULT_OPTIONS, ...options};
         this._timeout = fullOptions.timeout;
-        this._maxRequestInterval = fullOptions.maxRequestInterval;
+
+        this._requestQueue = new RateLimitedTaskQueue(fullOptions.maxRequestInterval);
     }
 
     get host(): string {
         return 'http://' + this._host;
     }
 
-    private processRequestQueue(): void {
-        if (this._isProcessingQueue || this._requestQueue.length === 0) {
-            return;
-        }
-
-        this._isProcessingQueue = true;
-        const now = Date.now();
-        const timeSinceLastRequest = now - this._lastRequestTime;
-        const queueEntry = this._requestQueue.shift()!;
-
-        const executeRequest = () => {
-            queueEntry.execute()
-                .then(queueEntry.resolve)
-                .catch(queueEntry.reject)
-                .finally(() => {
-                    this._lastRequestTime = Date.now();
-                    this._isProcessingQueue = false;
-                    this.processRequestQueue();
-                });
-        };
-
-        if (timeSinceLastRequest < this._maxRequestInterval) {
-            setTimeout(executeRequest, this._maxRequestInterval - timeSinceLastRequest);
-        } else {
-            executeRequest();
-        }
-    }
-
     private requestGet<T>(uri: string, config?: AxiosRequestConfig<any>): Promise<T> {
-        return new Promise((resolve, reject) => {
-            const execute = () => axios.get(`${this.host}${uri}`, {
-                timeout: this._timeout,
-                ...config,
-            }).then(response => response.data);
-
-            this._requestQueue.push({ resolve, reject, execute });
-            this.processRequestQueue();
-        });
+        return this._requestQueue.enqueue(() => axios.get(`${this.host}${uri}`, {
+            timeout: this._timeout,
+            ...config,
+        }).then(response => response.data));
     }
 
     private async requestGetJsonResponse<T>(uri: string): Promise<T> {
