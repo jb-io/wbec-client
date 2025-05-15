@@ -1,6 +1,6 @@
 import axios from 'axios';
 import WbecClient from '../src/WbecClient';
-import { PvMode, WbecJsonResponse, WbecPvResponse, WbecConfigResponse } from '../src/types';
+import {PvMode, WbecJsonResponse, WbecPvResponse, WbecConfigResponse, BoxId} from '../src/types';
 
 jest.mock('axios');
 const mockedAxios = jest.mocked(axios);
@@ -102,7 +102,8 @@ describe('WbecClient', () => {
             const startTime = Date.now();
             mockedAxios.get.mockResolvedValue({ data: mockJsonResponse });
 
-            const requests = Array(3).fill(null).map(() => client.requestJson());
+            const requestJson = (id: number) => client.requestJson(id as BoxId);
+            const requests = Array(3).fill(null).map((_, index) => requestJson(index + 1));
             await Promise.all(requests);
 
             const endTime = Date.now();
@@ -132,6 +133,63 @@ describe('WbecClient', () => {
             results.forEach((result, index) => {
                 expect(result).toEqual({ id: index + 1 });
             });
+        });
+
+        it('should only send the latest current limit changes to axios', async () => {
+            // Mock responses for all requests
+            mockedAxios.get.mockResolvedValue({ data: mockJsonResponse });
+
+            // Execute a sequence of requests:
+            // 1. Request JSON data
+            const jsonPromise = client.requestJson();
+
+            // 2. Set current limits for Box 1
+            const box1FirstPromise = client.setCurrentLimit(1, 10);
+            // 3. Set current limits for Box 2
+            const box2FirstPromise = client.setCurrentLimit(2, 12);
+
+            // 4. Increase current limit for Box 1
+            const box1SecondPromise = client.setCurrentLimit(1, 16);
+            // 5. Increase current limit for Box 2
+            const box2SecondPromise = client.setCurrentLimit(2, 20);
+
+            // Wait for all promises to resolve
+            await Promise.all([
+                jsonPromise,
+                box1FirstPromise, box2FirstPromise,
+                box1SecondPromise, box2SecondPromise
+            ]);
+
+            // Check that axios.get was called the correct number of times:
+            // 1 for JSON request + 1 for Box 1 final request + 1 for Box 2 final request
+            expect(mockedAxios.get).toHaveBeenCalledTimes(3);
+
+            // Verify the specific URLs called were the ones with the latest values
+            expect(mockedAxios.get).toHaveBeenCalledWith(
+                expect.stringContaining('/json'),
+                expect.any(Object)
+            );
+
+            expect(mockedAxios.get).toHaveBeenCalledWith(
+                'http://192.168.1.100/json?currLim=16&id=1',
+                expect.any(Object)
+            );
+
+            expect(mockedAxios.get).toHaveBeenCalledWith(
+                'http://192.168.1.100/json?currLim=20&id=2',
+                expect.any(Object)
+            );
+
+            // Make sure the first requests with lower values were NOT sent
+            expect(mockedAxios.get).not.toHaveBeenCalledWith(
+                'http://192.168.1.100/json?currLim=10&id=1',
+                expect.any(Object)
+            );
+
+            expect(mockedAxios.get).not.toHaveBeenCalledWith(
+                'http://192.168.1.100/json?currLim=12&id=2',
+                expect.any(Object)
+            );
         });
     });
 

@@ -37,36 +37,36 @@ export default class WbecClient {
         return 'http://' + this._host;
     }
 
-    private requestGet<T>(uri: string, config?: AxiosRequestConfig<any>): Promise<T> {
+    private requestGet<T>(uri: string, config?: AxiosRequestConfig<any>, queueKey?: string): Promise<T> {
         return this._requestQueue.enqueue(() => axios.get(`${this.host}${uri}`, {
             timeout: this._timeout,
             ...config,
-        }).then(response => response.data));
+        }).then(response => response.data), queueKey);
     }
 
-    private async requestGetJsonResponse<T>(uri: string): Promise<T> {
-        return this.requestGet(uri, {responseType: 'json'});
+    private async requestGetJsonResponse<T>(uri: string, queueKey?: string): Promise<T> {
+        return this.requestGet(uri, {responseType: 'json'}, queueKey);
     }
 
     public async requestConfig(): Promise<WbecConfigResponse> {
-        return this.requestGetJsonResponse<WbecConfigResponse>(`/cfg`);
+        return this.requestGetJsonResponse<WbecConfigResponse>(`/cfg`, 'cfg');
     }
 
     public async requestJson(id: BoxId | null = null): Promise<WbecJsonResponse> {
         const idQuery = id !== null ? `?id=${id}` : '';
-        return this.requestGetJsonResponse<WbecJsonResponse>(`/json${idQuery}`);
+        return this.requestGetJsonResponse<WbecJsonResponse>(`/json${idQuery}`, `json${id}`);
     }
 
     public async requestPv(): Promise<WbecPvResponse> {
-        return this.requestGetJsonResponse<WbecPvResponse>(`/pv`);
+        return this.requestGetJsonResponse<WbecPvResponse>(`/pv`, `pv`);
     }
 
     public async requestStatus(id: BoxId): Promise<WbecStatusResponse> {
-        return this.requestGetJsonResponse<WbecStatusResponse>(`/status?box=${id}`);
+        return this.requestGetJsonResponse<WbecStatusResponse>(`/status?box=${id}`, `status${id}`);
     }
 
     public async requestChargeLog(id: BoxId, length: number = 10): Promise<WbecChargeLogResponse> {
-        return this.requestGetJsonResponse<WbecChargeLogResponse>(`/chargelog?id=${id}&len=${length}`);
+        return this.requestGetJsonResponse<WbecChargeLogResponse>(`/chargelog?id=${id}&len=${length}`, `chargelog${id}-${length}`);
     }
 
     public async setPvValue(parameters: {
@@ -81,16 +81,16 @@ export default class WbecClient {
             queryParameters.push(`${valueKey}=${value}`);
         }
         const queryString = queryParameters.join('&');
-        return this.requestGetJsonResponse<WbecPvResponse>(`/pv?${queryString}`);
+        return this.requestGetJsonResponse<WbecPvResponse>(`/pv?${queryString}`, 'pvset-' + Object.keys(parameters).join('+'));
     }
 
     public async setCurrentLimit(id: BoxId, currentLimit: number): Promise<WbecJsonResponse> {
         const queryString = `?currLim=${currentLimit}&id=${id}`;
-        return this.requestGetJsonResponse<WbecJsonResponse>(`/json` + queryString);
+        return this.requestGetJsonResponse<WbecJsonResponse>(`/json` + queryString, `jsonset${id}`);
     }
 
     public async reset(): Promise<void> {
-        await this.requestGet('/reset');
+        await this.requestGet('/reset', {},'reset');
     }
 
 }

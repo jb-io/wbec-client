@@ -88,6 +88,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+Features:
+* Enhanced request queue management with request deduplication
+
 ### 0.0.2 (2025-05-13)
 Refactor:
 * Export typescript types from index
