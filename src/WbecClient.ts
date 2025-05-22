@@ -33,6 +33,10 @@ export default class WbecClient {
         this._requestQueue = new RateLimitedTaskQueue(fullOptions.maxRequestInterval);
     }
 
+    public clientReset(): void {
+        this._requestQueue.reset();
+    }
+
     get host(): string {
         return 'http://' + this._host;
     }

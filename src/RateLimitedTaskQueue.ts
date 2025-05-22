@@ -10,6 +10,7 @@ export default class RateLimitedTaskQueue {
     private _lastRequestTime: number = 0;
     private _isProcessingQueue: boolean = false;
     private _requestQueue: Array<RequestQueueEntry> = [];
+    private _timeoutHandle: NodeJS.Timeout | null = null;
 
     constructor(private readonly _maxRequestInterval: number) {}
 
@@ -48,6 +49,25 @@ export default class RateLimitedTaskQueue {
         });
     }
 
+    public reset(): void {
+        // Cancel the current timeout if exists
+        if (this._timeoutHandle !== null) {
+            clearTimeout(this._timeoutHandle);
+            this._timeoutHandle = null;
+        }
+
+        // Reject all pending tasks in the queue
+        const resetError = new Error("Operation cancelled: The request queue was reset");
+        while (this._requestQueue.length > 0) {
+            const entry = this._requestQueue.shift()!;
+            entry.reject(resetError);
+        }
+
+        // Reset state to initial values
+        this._lastRequestTime = 0;
+        this._isProcessingQueue = false;
+    }
+
     private processQueue(): void {
         if (this._isProcessingQueue || this._requestQueue.length === 0) {
             return;
@@ -59,6 +79,7 @@ export default class RateLimitedTaskQueue {
         const queueEntry = this._requestQueue.shift()!;
 
         const executeRequest = () => {
+            this._timeoutHandle = null;
             queueEntry.key = undefined;
             queueEntry.execute()
                 .then(queueEntry.resolve)
@@ -71,7 +92,7 @@ export default class RateLimitedTaskQueue {
         };
 
         if (timeSinceLastRequest < this._maxRequestInterval) {
-            setTimeout(executeRequest, this._maxRequestInterval - timeSinceLastRequest);
+            this._timeoutHandle = setTimeout(executeRequest, this._maxRequestInterval - timeSinceLastRequest);
         } else {
             executeRequest();
         }
