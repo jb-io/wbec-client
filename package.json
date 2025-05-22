@@ -1,7 +1,7 @@
 {
   "name": "wbec-client",
   "description": "A TypeScript client library for WBEC (Wallbox Ecosystem Controller) with request queue management, comprehensive API support, and full type safety",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

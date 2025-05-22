@@ -88,7 +88,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.4 (2025-05-22)
 * [FEATURE] Allow resetting TaskQueue and WbecClient
 
 ### 0.0.3 (2025-05-15)
